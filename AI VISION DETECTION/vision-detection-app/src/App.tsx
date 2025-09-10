@@ -140,6 +140,11 @@ function App() {
           <p className="text-center text-sm">
             AI Vision Detection App - Powered by TensorFlow.js with COCO-SSD Model
           </p>
+          {/* --- THIS IS THE NEW CODE YOU ARE ADDING --- */}
+          <p className="mt-2 text-center text-xs">
+            <strong>Your Privacy Matters:</strong> All image processing is done directly in
+            your browser. Your photos are never uploaded or stored on a server.
+          </p>
         </div>
       </footer>
     </div>
@@ -147,3 +152,4 @@ function App() {
 }
 
 export default App;
+
