@@ -7,26 +7,29 @@ import { detectObjects, Detection } from './services/detectionService';
 
 import ThemeToggle from './ThemeToggle';
 
+// Define the possible statuses for our application
+export type Status = 'idle' | 'loadingModel' | 'processingImage';
+
 function App() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
   const [detections, setDetections] = useState<Detection[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState('Processing...');
+  // --- CHANGE 1: Replaced isLoading and loadingMessage with a single status state ---
+  const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState<string | null>(null);
 
   const handleImageUpload = async (file: File) => {
     setDetections([]);
     setError(null);
-    setIsLoading(true);
-    setLoadingMessage('Loading model and processing image...');
+    // The status will be set inside detectObjects now
 
     try {
       const localUrl = URL.createObjectURL(file);
       setImageUrl(localUrl);
       setImageName(file.name);
 
-      const results = await detectObjects(file);
+      // --- CHANGE 2: Pass the setStatus function to the detection service ---
+      const results = await detectObjects(file, setStatus);
       setDetections(results);
 
       if (results.length === 0) {
@@ -40,7 +43,8 @@ function App() {
           : 'Failed to process the image. Please try again.'
       );
     } finally {
-      setIsLoading(false);
+      // Reset status to idle when everything is done
+      setStatus('idle');
     }
   };
 
@@ -49,21 +53,21 @@ function App() {
     setImageName(fileName);
     setDetections([]);
     setError(null);
-    setIsLoading(true);
-    setLoadingMessage('Loading model and processing image...');
+    // The status will be set inside detectObjects now
 
     fetch(url)
       .then((res) => res.blob())
       .then((blob) => {
         const file = new File([blob], fileName, { type: 'image/jpeg' });
-        return detectObjects(file);
+        // --- Also pass setStatus here ---
+        return detectObjects(file, setStatus);
       })
       .then((results) => {
         setDetections(results);
         if (results.length === 0) {
           setError('No objects were detected in this image. Try another image with clearer objects.');
         }
-        setIsLoading(false);
+        setStatus('idle');
       })
       .catch((err) => {
         console.error('Error processing sample image:', err);
@@ -72,8 +76,20 @@ function App() {
             ? err.message
             : 'Failed to process the sample image. Please try again.'
         );
-        setIsLoading(false);
+        setStatus('idle');
       });
+  };
+
+  // --- CHANGE 3: Create a dynamic message based on the current status ---
+  const getLoadingMessage = () => {
+    switch (status) {
+      case 'loadingModel':
+        return 'Loading model... This may take a moment.';
+      case 'processingImage':
+        return 'Processing image...';
+      default:
+        return '';
+    }
   };
 
   return (
@@ -104,7 +120,7 @@ function App() {
           <SampleImage onSampleImageSelect={handleSampleImageSelect} />
 
           {/* Preview */}
-          {imageUrl && !isLoading && !error && detections.length === 0 && (
+          {imageUrl && status === 'idle' && !error && detections.length === 0 && (
             <div className="mt-6">
               <h3 className="mb-2 text-lg font-medium">Preview</h3>
               <div className="flex justify-center rounded-lg border border-border p-4">
@@ -117,8 +133,8 @@ function App() {
             </div>
           )}
 
-          {/* Loading State */}
-          {isLoading && <LoadingSpinner message={loadingMessage} />}
+          {/* --- CHANGE 4: Update the Loading State UI --- */}
+          {status !== 'idle' && <LoadingSpinner message={getLoadingMessage()} />}
 
           {/* Error Message */}
           {error && (
@@ -128,7 +144,7 @@ function App() {
           )}
 
           {/* Results */}
-          {!isLoading && detections.length > 0 && (
+          {status === 'idle' && detections.length > 0 && (
             <ResultsPanel imageUrl={imageUrl} detections={detections} />
           )}
         </div>

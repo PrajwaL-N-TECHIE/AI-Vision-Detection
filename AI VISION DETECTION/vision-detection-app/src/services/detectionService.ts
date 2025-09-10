@@ -1,5 +1,5 @@
-// Import TensorFlow.js types
-import type * as tf from '@tensorflow/tfjs';
+// Import the Status type from App.tsx
+import { Status } from '../App';
 
 // Types for our detection service
 export interface Detection {
@@ -21,7 +21,11 @@ interface CocoSsdModel {
 // This function loads the COCO-SSD model using TensorFlow.js
 let model: CocoSsdModel | null = null;
 
-export const detectObjects = async (imageFile: File): Promise<Detection[]> => {
+// --- CHANGE 1: Accept the setStatus function as an argument ---
+export const detectObjects = async (
+  imageFile: File,
+  setStatus: (status: Status) => void
+): Promise<Detection[]> => {
   return new Promise<Detection[]>((resolve, reject) => {
     const reader = new FileReader();
 
@@ -34,14 +38,16 @@ export const detectObjects = async (imageFile: File): Promise<Detection[]> => {
       try {
         // Create an image element to use for detection
         const img = new Image();
-        img.crossOrigin = "anonymous";
+        img.crossOrigin = 'anonymous';
 
         img.onload = async () => {
           try {
             // Load the model if not already loaded
             if (!model) {
+              // --- CHANGE 2: Set status to loadingModel ---
+              setStatus('loadingModel');
+
               // Dynamically import tf and cocoSsd
-              const tf = await import('@tensorflow/tfjs');
               const cocoSsd = await import('@tensorflow-models/coco-ssd');
 
               // Initialize model
@@ -49,6 +55,9 @@ export const detectObjects = async (imageFile: File): Promise<Detection[]> => {
               model = await cocoSsd.load();
               console.log('Model loaded successfully');
             }
+
+            // --- CHANGE 3: Set status to processingImage ---
+            setStatus('processingImage');
 
             // Perform detection
             const predictions = await model.detect(img);
@@ -89,3 +98,4 @@ export const detectObjects = async (imageFile: File): Promise<Detection[]> => {
     reader.readAsDataURL(imageFile);
   });
 };
+
